@@ -2,14 +2,18 @@
 
 /**
  * Testem middleware that:
- *  1. Connects to Chrome via the DevTools Protocol (CDP) and enables precise
- *     coverage collection as soon as Chrome is ready.
- *  2. Exposes GET /_coverage-ready — called by test-helper.js at startup.
- *     It blocks until the CDP connection is established, ensuring coverage is
- *     active before any test code runs.
- *  3. Exposes GET /_coverage — called by the QUnit.done() hook once all tests
- *     have finished. Saves the V8 coverage payload to coverage-data.json so
- *     the on_exit script can process it after Chrome is closed.
+ *  1. Connects to Chrome via the DevTools Protocol (CDP) as soon as Chrome is
+ *     ready, enabling precise coverage collection.
+ *  2. Exposes GET /_coverage — called by the QUnit.done() async hook in
+ *     test-helper.js. QUnit awaits all done() callbacks before emitting the
+ *     final TAP summary line, which is what gates Chrome's shutdown. So this
+ *     handler completing is exactly what keeps Chrome alive long enough to
+ *     write coverage-data.json before testem kills it.
+ *
+ * Note: no /_coverage-ready handshake is needed. This middleware is loaded
+ * when testem reads its config, which is before Chrome even launches. By the
+ * time Chrome starts and the 2.5 MB test bundle is parsed and executed, CDP
+ * has already been connected and coverage is active.
  */
 
 const path = require('path');
@@ -19,9 +23,6 @@ const CDP_PORT = 9222;
 const OUTPUT_FILE = path.join(__dirname, 'coverage-data.json');
 
 let cdpClient = null;
-// Promise that resolves once CDP is connected and coverage is started.
-let cdpReadyResolve;
-const cdpReady = new Promise((resolve) => { cdpReadyResolve = resolve; });
 
 async function connectToCDP() {
   let CDP;
@@ -29,7 +30,6 @@ async function connectToCDP() {
     CDP = require('chrome-remote-interface');
   } catch {
     console.warn('[coverage] chrome-remote-interface not installed — coverage disabled.');
-    cdpReadyResolve(false);
     return;
   }
 
@@ -46,7 +46,6 @@ async function connectToCDP() {
       await client.Profiler.startPreciseCoverage({ callCount: true, detailed: true });
 
       cdpClient = client;
-      cdpReadyResolve(true);
       return;
     } catch {
       await new Promise((r) => setTimeout(r, 500));
@@ -54,26 +53,12 @@ async function connectToCDP() {
   }
 
   console.warn('[coverage] Could not connect to Chrome CDP after 30 s — coverage disabled.');
-  cdpReadyResolve(false);
 }
 
 // Begin attempting to connect immediately when the module is loaded by testem.
 connectToCDP();
 
 module.exports = function coverageMiddleware(app) {
-  /**
-   * Called by test-helper.js before qunitStart(). Waits until CDP is connected
-   * and precise coverage is enabled so that no test code runs uncovered.
-   */
-  app.get('/_coverage-ready', async (req, res) => {
-    const ok = await cdpReady;
-    res.json({ ok });
-  });
-
-  /**
-   * Called by the QUnit.done() async hook. Snapshots V8 coverage and writes it
-   * to coverage-data.json for the on_exit report script to read.
-   */
   app.get('/_coverage', async (req, res) => {
     if (!cdpClient) {
       res.status(503).json({ error: 'CDP not connected' });
