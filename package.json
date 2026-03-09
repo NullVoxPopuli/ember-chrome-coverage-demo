@@ -27,7 +27,9 @@
     "lint:js": "eslint . --cache",
     "lint:js:fix": "eslint . --fix",
     "start": "vite",
-    "test": "vite build --mode development && ember test --path dist"
+    "test:build": "vite build --mode development",
+    "test:run": "testem ci --port 0",
+    "test": "pnpm test:build && pnpm test:run"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
