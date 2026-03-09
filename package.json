@@ -15,6 +15,7 @@
     "test": "tests"
   },
   "scripts": {
+    "coverage:view": "cd coverage && pnpm dlx html-pages . --no-cache",
     "build": "vite build",
     "format": "prettier . --cache --write",
     "lint": "concurrently \"pnpm:lint:*(!fix)\" --names \"lint:\" --prefixColors auto",
