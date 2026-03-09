@@ -28,10 +28,15 @@
     "lint:js:fix": "eslint . --fix",
     "start": "vite",
     "test:build": "vite build --mode development",
-    "test:run": "testem ci --port 0",
+    "test:run": "sh -c 'testem ci --port 0; code=$?; node ./coverage-report.cjs; exit $code'",
     "test": "pnpm test:build && pnpm test:run"
   },
   "devDependencies": {
+    "chrome-remote-interface": "^0.33.2",
+    "istanbul-lib-coverage": "^3.2.2",
+    "istanbul-lib-report": "^3.0.1",
+    "istanbul-reports": "^3.1.7",
+    "v8-to-istanbul": "^9.3.0",
     "@babel/core": "^7.29.0",
     "@babel/eslint-parser": "^7.28.6",
     "@babel/plugin-transform-runtime": "^7.29.0",

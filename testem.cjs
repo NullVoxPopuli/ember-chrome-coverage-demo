@@ -1,5 +1,7 @@
 'use strict';
 
+const path = require('path');
+
 if (typeof module !== 'undefined') {
   module.exports = {
     test_page: 'tests/index.html?hidepassed',
@@ -8,6 +10,7 @@ if (typeof module !== 'undefined') {
     launch_in_ci: ['Chrome'],
     launch_in_dev: ['Chrome'],
     browser_start_timeout: 120,
+    middleware: [require(path.join(__dirname, 'coverage-middleware.cjs'))],
     browser_args: {
       Chrome: {
         ci: [
@@ -17,7 +20,7 @@ if (typeof module !== 'undefined') {
           '--disable-dev-shm-usage',
           '--disable-software-rasterizer',
           '--mute-audio',
-          '--remote-debugging-port=0',
+          '--remote-debugging-port=9222',
           '--window-size=1440,900',
         ].filter(Boolean),
       },
